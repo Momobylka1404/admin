@@ -1,0 +1,2068 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin - Salon de Beauté Cléopatra</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <!-- Firebase SDKs -->
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
+    
+    <!-- EmailJS SDK -->
+    <script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@3/dist/email.min.js"></script>
+    
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+
+        body {
+            background-color: #f5f5f5;
+            color: #333;
+            line-height: 1.6;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        header {
+            background: linear-gradient(135deg, #d17a9e 0%, #b8658a 100%);
+            color: white;
+            padding: 25px 0;
+            margin-bottom: 30px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+        }
+
+        .header-content {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .logo-admin {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .logo-admin i {
+            font-size: 2.5rem;
+        }
+
+        .admin-controls {
+            display: flex;
+            gap: 15px;
+            align-items: center;
+        }
+
+        .btn {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: all 0.3s;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .btn-primary {
+            background-color: #4CAF50;
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background-color: #45a049;
+            transform: translateY(-2px);
+        }
+
+        .btn-secondary {
+            background-color: #f0e6eb;
+            color: #d17a9e;
+        }
+
+        .btn-secondary:hover {
+            background-color: #e8dae3;
+        }
+
+        .btn-danger {
+            background-color: #f44336;
+            color: white;
+        }
+
+        .btn-danger:hover {
+            background-color: #d32f2f;
+        }
+
+        .btn-warning {
+            background-color: #ff9800;
+            color: white;
+        }
+
+        .btn-warning:hover {
+            background-color: #f57c00;
+        }
+
+        .stats-cards {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+
+        .stat-card {
+            background: white;
+            padding: 25px;
+            border-radius: 10px;
+            box-shadow: 0 3px 10px rgba(0, 0, 0, 0.08);
+            display: flex;
+            align-items: center;
+            gap: 20px;
+        }
+
+        .stat-icon {
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.5rem;
+        }
+
+        .stat-pending .stat-icon {
+            background-color: #fff3cd;
+            color: #ff9800;
+        }
+
+        .stat-confirmed .stat-icon {
+            background-color: #d4edda;
+            color: #4CAF50;
+        }
+
+        .stat-today .stat-icon {
+            background-color: #d1ecf1;
+            color: #17a2b8;
+        }
+
+        .stat-revenue .stat-icon {
+            background-color: #f8d7da;
+            color: #dc3545;
+        }
+
+        .stat-info h3 {
+            font-size: 2rem;
+            margin-bottom: 5px;
+        }
+
+        .stat-info p {
+            color: #666;
+            font-size: 0.9rem;
+        }
+
+        .admin-tabs {
+            display: flex;
+            background: white;
+            border-radius: 10px 10px 0 0;
+            overflow: hidden;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
+        }
+
+        .tab {
+            padding: 15px 30px;
+            cursor: pointer;
+            font-weight: 600;
+            border-bottom: 3px solid transparent;
+            transition: all 0.3s;
+        }
+
+        .tab:hover {
+            background-color: #f9f0f5;
+        }
+
+        .tab.active {
+            border-bottom-color: #d17a9e;
+            color: #d17a9e;
+            background-color: #f9f0f5;
+        }
+
+        .tab-content {
+            background: white;
+            border-radius: 0 0 10px 10px;
+            padding: 30px;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.05);
+            min-height: 500px;
+        }
+
+        .tab-pane {
+            display: none;
+        }
+
+        .tab-pane.active {
+            display: block;
+        }
+
+        .requests-list {
+            display: grid;
+            gap: 15px;
+        }
+
+        .request-card {
+            background: white;
+            border-radius: 10px;
+            padding: 20px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+            border-left: 4px solid #ffc107;
+            transition: all 0.3s;
+        }
+
+        .request-card.confirmed {
+            border-left-color: #4CAF50;
+        }
+
+        .request-card.rejected {
+            border-left-color: #f44336;
+            opacity: 0.7;
+        }
+
+        .request-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 15px;
+        }
+
+        .request-info h4 {
+            color: #d17a9e;
+            margin-bottom: 5px;
+        }
+
+        .request-date {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            color: #666;
+            font-size: 0.9rem;
+        }
+
+        .request-status {
+            padding: 5px 15px;
+            border-radius: 20px;
+            font-size: 0.8rem;
+            font-weight: bold;
+        }
+
+        .status-pending {
+            background-color: #fff3cd;
+            color: #856404;
+        }
+
+        .status-confirmed {
+            background-color: #d4edda;
+            color: #155724;
+        }
+
+        .status-rejected {
+            background-color: #f8d7da;
+            color: #721c24;
+        }
+
+        .request-details {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-bottom: 15px;
+            padding: 15px;
+            background-color: #f9f0f5;
+            border-radius: 8px;
+        }
+
+        .detail-item {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .detail-label {
+            font-size: 0.8rem;
+            color: #888;
+            margin-bottom: 3px;
+        }
+
+        .detail-value {
+            font-weight: 600;
+        }
+
+        .request-actions {
+            display: flex;
+            gap: 10px;
+            justify-content: flex-end;
+        }
+
+        .action-btn {
+            padding: 8px 15px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 0.9rem;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            transition: all 0.2s;
+        }
+
+        .action-btn.confirm {
+            background-color: #e8f5e9;
+            color: #2e7d32;
+        }
+
+        .action-btn.confirm:hover {
+            background-color: #d4edda;
+        }
+
+        .action-btn.reject {
+            background-color: #ffebee;
+            color: #d32f2f;
+        }
+
+        .action-btn.reject:hover {
+            background-color: #ffcdd2;
+        }
+
+        .action-btn.call {
+            background-color: #e3f2fd;
+            color: #1976d2;
+        }
+
+        .action-btn.call:hover {
+            background-color: #bbdefb;
+        }
+
+        .action-btn.edit {
+            background-color: #fff3e0;
+            color: #f57c00;
+        }
+
+        .action-btn.edit:hover {
+            background-color: #ffe0b2;
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 60px 20px;
+            color: #888;
+        }
+
+        .empty-state i {
+            font-size: 4rem;
+            margin-bottom: 20px;
+            color: #e0e0e0;
+        }
+
+        .filters {
+            display: flex;
+            gap: 15px;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+        }
+
+        .filter-group {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .filter-select, .filter-input {
+            padding: 10px;
+            border: 1px solid #e8dae3;
+            border-radius: 6px;
+            background: white;
+        }
+
+        .filter-select:focus, .filter-input:focus {
+            outline: none;
+            border-color: #d17a9e;
+        }
+
+        .calendar-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            padding-bottom: 15px;
+            border-bottom: 2px solid #f0e6eb;
+        }
+        
+        .calendar-nav {
+            display: flex;
+            gap: 10px;
+        }
+        
+        .calendar-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+            gap: 20px;
+        }
+        
+        .day-card {
+            background: white;
+            border-radius: 10px;
+            padding: 20px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+            transition: transform 0.3s, box-shadow 0.3s;
+        }
+        
+        .day-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+        }
+        
+        .day-card.today {
+            border: 2px solid #4CAF50;
+        }
+        
+        .day-card.tomorrow {
+            border: 2px solid #2196F3;
+        }
+        
+        .day-header {
+            color: #d17a9e;
+            font-weight: 600;
+            margin-bottom: 15px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid #f0e6eb;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .day-stats {
+            display: flex;
+            justify-content: space-between;
+            font-size: 0.85rem;
+            margin-bottom: 15px;
+            padding: 8px;
+            background: #f9f0f5;
+            border-radius: 5px;
+        }
+        
+        .time-slot-admin {
+            background: #f9f0f5;
+            padding: 10px;
+            border-radius: 6px;
+            margin-bottom: 10px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            transition: background 0.3s;
+        }
+        
+        .time-slot-admin:hover {
+            background: #f0e6eb;
+        }
+        
+        .time-slot-admin.booked {
+            background: #fff;
+            border-left: 3px solid #d17a9e;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        }
+        
+        .client-info {
+            flex: 1;
+        }
+        
+        .service-info {
+            text-align: right;
+            min-width: 100px;
+        }
+        
+        .empty-day {
+            text-align: center;
+            color: #888;
+            padding: 30px 0;
+            font-style: italic;
+        }
+        
+        .day-indicator {
+            background: #4CAF50;
+            color: white;
+            padding: 2px 8px;
+            border-radius: 10px;
+            font-size: 0.7rem;
+            margin-left: 5px;
+        }
+        
+        .day-indicator.tomorrow {
+            background: #2196F3;
+        }
+
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.5);
+            display: none;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+        }
+
+        .modal-overlay.active {
+            display: flex;
+        }
+
+        .modal {
+            background: white;
+            border-radius: 10px;
+            padding: 30px;
+            width: 90%;
+            max-width: 500px;
+            max-height: 90vh;
+            overflow-y: auto;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+        }
+
+        .modal h3 {
+            color: #d17a9e;
+            margin-bottom: 20px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid #f0e6eb;
+        }
+
+        .modal-actions {
+            display: flex;
+            gap: 10px;
+            justify-content: flex-end;
+            margin-top: 20px;
+        }
+
+        .form-group {
+            margin-bottom: 15px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 5px;
+            color: #666;
+            font-weight: 500;
+        }
+
+        .form-group input, .form-group select, .form-group textarea {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #e8dae3;
+            border-radius: 6px;
+            font-size: 1rem;
+        }
+
+        .form-group input:focus, .form-group select:focus, .form-group textarea:focus {
+            outline: none;
+            border-color: #d17a9e;
+        }
+
+        .notification-admin {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            padding: 15px 20px;
+            border-radius: 8px;
+            color: white;
+            font-weight: bold;
+            z-index: 1001;
+            display: none;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+            animation: slideIn 0.3s ease;
+        }
+
+        .notification-admin.success {
+            background-color: #4CAF50;
+        }
+
+        .notification-admin.error {
+            background-color: #f44336;
+        }
+
+        .notification-admin.warning {
+            background-color: #ff9800;
+        }
+
+        @keyframes slideIn {
+            from { transform: translateX(100%); opacity: 0; }
+            to { transform: translateX(0); opacity: 1; }
+        }
+
+        .login-container {
+            max-width: 400px;
+            margin: 100px auto;
+            padding: 40px;
+            background: white;
+            border-radius: 10px;
+            box-shadow: 0 5px 20px rgba(0, 0, 0, 0.1);
+            text-align: center;
+        }
+
+        .login-logo {
+            font-size: 3rem;
+            color: #d17a9e;
+            margin-bottom: 20px;
+        }
+
+        .login-form {
+            margin-top: 30px;
+        }
+
+        .loading-spinner {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid rgba(209, 122, 158, 0.3);
+            border-radius: 50%;
+            border-top-color: #d17a9e;
+            animation: spin 1s ease-in-out infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        @media (max-width: 1200px) {
+            .calendar-grid {
+                grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+            }
+        }
+        
+        @media (max-width: 768px) {
+            .header-content {
+                flex-direction: column;
+                gap: 20px;
+                text-align: center;
+            }
+            
+            .admin-tabs {
+                flex-wrap: wrap;
+            }
+            
+            .tab {
+                flex: 1;
+                text-align: center;
+                padding: 12px;
+                font-size: 0.9rem;
+            }
+            
+            .request-header {
+                flex-direction: column;
+                gap: 10px;
+            }
+            
+            .request-actions {
+                flex-wrap: wrap;
+                justify-content: flex-start;
+            }
+            
+            .action-btn {
+                flex: 1;
+                justify-content: center;
+            }
+            
+            .calendar-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .calendar-header {
+                flex-direction: column;
+                gap: 15px;
+                text-align: center;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Page de connexion -->
+    <div id="login-page" class="login-container">
+        <div class="login-logo">
+            <i class="fas fa-user-shield"></i>
+        </div>
+        <h2>Espace Administrateur</h2>
+        <p>Salon de Beauté Cléopatra</p>
+        
+        <div class="login-form">
+            <div class="form-group">
+                <label for="admin-password">Mot de passe administrateur</label>
+                <input type="password" id="admin-password" placeholder="Entrez le mot de passe">
+            </div>
+            <button class="btn btn-primary" id="login-btn" style="width: 100%;">
+                <span id="login-text">Se connecter</span>
+                <span id="login-spinner" class="loading-spinner" style="display: none;"></span>
+            </button>
+            <p style="margin-top: 20px; font-size: 0.9rem; color: #666;">
+                <i class="fas fa-info-circle"></i> Accès réservé au personnel du salon
+            </p>
+        </div>
+    </div>
+
+    <!-- Interface d'administration -->
+    <div id="admin-interface" style="display: none;">
+        <header>
+            <div class="container">
+                <div class="header-content">
+                    <div class="logo-admin">
+                        <i class="fas fa-user-shield"></i>
+                        <div>
+                            <h1>Administration Salon Cléopatra</h1>
+                            <p>Gestion des demandes de rendez-vous</p>
+                        </div>
+                    </div>
+                    <div class="admin-controls">
+                        <div id="current-date" style="background: rgba(255,255,255,0.2); padding: 5px 15px; border-radius: 20px;">
+                            <i class="far fa-calendar"></i> <span id="today-date"></span>
+                        </div>
+                        <button class="btn btn-secondary" id="refresh-btn">
+                            <i class="fas fa-sync-alt"></i> Actualiser
+                        </button>
+                        <button class="btn btn-danger" id="logout-btn">
+                            <i class="fas fa-sign-out-alt"></i> Déconnexion
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </header>
+
+        <div class="container">
+            <!-- Cartes de statistiques -->
+            <div class="stats-cards">
+                <div class="stat-card stat-pending">
+                    <div class="stat-icon">
+                        <i class="fas fa-clock"></i>
+                    </div>
+                    <div class="stat-info">
+                        <h3 id="pending-count">0</h3>
+                        <p>En attente</p>
+                    </div>
+                </div>
+                <div class="stat-card stat-confirmed">
+                    <div class="stat-icon">
+                        <i class="fas fa-check-circle"></i>
+                    </div>
+                    <div class="stat-info">
+                        <h3 id="confirmed-count">0</h3>
+                        <p>Confirmés</p>
+                    </div>
+                </div>
+                <div class="stat-card stat-today">
+                    <div class="stat-icon">
+                        <i class="fas fa-calendar-day"></i>
+                    </div>
+                    <div class="stat-info">
+                        <h3 id="today-count">0</h3>
+                        <p>Aujourd'hui</p>
+                    </div>
+                </div>
+                <div class="stat-card stat-revenue">
+                    <div class="stat-icon">
+                        <i class="fas fa-money-bill-wave"></i>
+                    </div>
+                    <div class="stat-info">
+                        <h3 id="revenue-total">0 DA</h3>
+                        <p>Chiffre du mois</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Onglets -->
+            <div class="admin-tabs">
+                <div class="tab active" data-tab="pending">
+                    <i class="fas fa-clock"></i> Demandes en attente
+                </div>
+                <div class="tab" data-tab="confirmed">
+                    <i class="fas fa-check-circle"></i> Rendez-vous confirmés
+                </div>
+                <div class="tab" data-tab="calendar">
+                    <i class="fas fa-calendar-alt"></i> Planning
+                </div>
+            </div>
+
+            <!-- Contenu des onglets -->
+            <div class="tab-content">
+                <!-- Onglet: Demandes en attente -->
+                <div class="tab-pane active" id="pending-tab">
+                    <div class="filters">
+                        <div class="filter-group">
+                            <label for="filter-date">Date:</label>
+                            <input type="date" id="filter-date" class="filter-input">
+                        </div>
+                        <div class="filter-group">
+                            <label for="filter-service">Service:</label>
+                            <select id="filter-service" class="filter-select">
+                                <option value="">Tous les services</option>
+                                <!-- Les options seront ajoutées par JS -->
+                            </select>
+                        </div>
+                        <button class="btn btn-secondary" id="clear-filters">
+                            <i class="fas fa-times"></i> Effacer les filtres
+                        </button>
+                    </div>
+                    
+                    <div class="requests-list" id="pending-list">
+                        <!-- Les demandes en attente seront ajoutées ici -->
+                    </div>
+                </div>
+
+                <!-- Onglet: Confirmés -->
+                <div class="tab-pane" id="confirmed-tab">
+                    <div class="requests-list" id="confirmed-list">
+                        <!-- Les rendez-vous confirmés seront ajoutés ici -->
+                    </div>
+                </div>
+
+                <!-- Onglet: Planning -->
+                <div class="tab-pane" id="calendar-tab">
+                    <div class="calendar-header">
+                        <div>
+                            <h3 style="margin: 0; color: #d17a9e;">
+                                <i class="fas fa-calendar-alt"></i> Planning des 15 prochains jours
+                            </h3>
+                            <p style="margin: 5px 0 0 0; color: #666; font-size: 0.9rem;">
+                                Vue d'ensemble des rendez-vous confirmés
+                            </p>
+                        </div>
+                        <div class="calendar-nav">
+                            <button class="btn btn-secondary" id="prev-days">
+                                <i class="fas fa-chevron-left"></i> Précédent
+                            </button>
+                            <button class="btn btn-secondary" id="next-days">
+                                Suivant <i class="fas fa-chevron-right"></i>
+                            </button>
+                            <button class="btn btn-primary" id="today-btn">
+                                <i class="fas fa-calendar-day"></i> Aujourd'hui
+                            </button>
+                        </div>
+                    </div>
+                    <div class="calendar-view" id="calendar-view">
+                        <!-- Le planning sera ajouté ici -->
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modals -->
+    <div class="modal-overlay" id="confirm-modal">
+        <div class="modal">
+            <h3>Confirmer la demande</h3>
+            <div id="confirm-details"></div>
+            <div class="modal-actions">
+                <button class="btn btn-secondary" id="cancel-confirm">
+                    <i class="fas fa-times"></i> Annuler
+                </button>
+                <button class="btn btn-primary" id="submit-confirm">
+                    <i class="fas fa-check"></i> Confirmer
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal-overlay" id="reject-modal">
+        <div class="modal">
+            <h3>Refuser la demande</h3>
+            <p>Pourquoi refusez-vous cette demande ?</p>
+            <div class="form-group">
+                <label for="reject-reason">Raison :</label>
+                <textarea id="reject-reason" rows="3" placeholder="Ex: Créneau indisponible, client non joignable..."></textarea>
+            </div>
+            <div class="modal-actions">
+                <button class="btn btn-secondary" id="cancel-reject">
+                    <i class="fas fa-times"></i> Annuler
+                </button>
+                <button class="btn btn-danger" id="submit-reject">
+                    <i class="fas fa-ban"></i> Refuser
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal pour modifier un rendez-vous -->
+    <div class="modal-overlay" id="edit-modal">
+        <div class="modal">
+            <h3><i class="fas fa-edit"></i> Modifier le rendez-vous</h3>
+            <div id="edit-current-info" style="background: #f0f7ff; padding: 15px; border-radius: 8px; margin-bottom: 20px;"></div>
+            
+            <div class="form-group">
+                <label for="edit-date">Nouvelle date :</label>
+                <input type="date" id="edit-date" class="filter-input" required>
+            </div>
+            
+            <div class="form-group">
+                <label for="edit-time">Nouvelle heure :</label>
+                <select id="edit-time" class="filter-select" required>
+                    <option value="">Sélectionner une heure</option>
+                    <!-- Les créneaux horaires seront générés dynamiquement -->
+                </select>
+            </div>
+            
+            <div class="form-group">
+                <label for="edit-notes">Notes de modification (optionnel) :</label>
+                <textarea id="edit-notes" rows="3" placeholder="Raison du changement..."></textarea>
+            </div>
+            
+            <div class="modal-actions">
+                <button class="btn btn-secondary" id="cancel-edit">
+                    <i class="fas fa-times"></i> Annuler
+                </button>
+                <button class="btn btn-warning" id="submit-edit">
+                    <i class="fas fa-save"></i> Enregistrer les modifications
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Notification -->
+    <div id="notification-admin" class="notification-admin"></div>
+
+    <script>
+        // ============================================
+        // CONFIGURATION
+        // ============================================
+        const firebaseConfig = {
+            apiKey: "AIzaSyAXntYuFA672jDaWBdoeoJ1ii65W8mjntM",
+            authDomain: "salon-de-beaute-ec088.firebaseapp.com",
+            databaseURL: "https://salon-de-beaute-ec088-default-rtdb.firebaseio.com",
+            projectId: "salon-de-beaute-ec088",
+            storageBucket: "salon-de-beaute-ec088.firebasestorage.app",
+            messagingSenderId: "270250463742",
+            appId: "1:270250463742:web:eb198142f65bbe4fd830af",
+            measurementId: "G-JLLE56066L"
+        };
+
+        const EMAILJS_PUBLIC_KEY = 'YD_--7TSDZ-xOcd8l';
+        const EMAILJS_SERVICE_ID = 'service_1fufyah';
+        const EMAILJS_TEMPLATE_CLIENT_CONFIRMED = 'template_msuzz8g'; // Email de confirmation client
+        const EMAILJS_TEMPLATE_CLIENT_REJECTED = 'template_te9yk6x'; // Email de refus client
+
+        // MOT DE PASSE ADMIN (À CHANGER !)
+        const ADMIN_PASSWORD = "salon123";
+
+        // ============================================
+        // INITIALISATION
+        // ============================================
+        let database;
+        let appointmentRequests = {};
+        let confirmedSlots = {};
+        let selectedRequest = null;
+        let calendarStartDate = new Date();
+        const calendarDaysToShow = 15;
+        
+        const services = [
+            { id: 1, name: "Brushing", price: "" },
+            { id: 2, name: "Soin capillaire (kératine|protéine|lissage)", price: "" },
+            { id: 3, name: "Soin des pieds peeling|paraffine", price: 4500 },
+            { id: 4, name: "Manucure", price: 3000 },
+            { id: 5, name: "Pédicure", price: 2000 },
+            { id: 6, name: "Soin du visage", price: 2500 },
+            { id: 7, name: "Épilation", price: 5000 },
+            { id: 8, name: "Brow lift", price: 3000 },
+            { id: 9, name: "Lash lift", price: 3000 },
+            { id: 10, name: "Prestation marié (maquillage|coiffure)", price: "" },
+            { id: 11, name: "Prestation invité (maquillage|coiffure)", price: "" }
+        ];
+
+        try {
+            firebase.initializeApp(firebaseConfig);
+            database = firebase.database();
+        } catch (error) {
+            console.error("Erreur Firebase:", error);
+        }
+        
+        (function() {
+            emailjs.init(EMAILJS_PUBLIC_KEY);
+        })();
+
+        // ============================================
+        // FONCTIONS UTILITAIRES
+        // ============================================
+        
+        // Convertir date string (YYYY-MM-DD) en date locale
+        function parseLocalDate(dateStr) {
+            const [year, month, day] = dateStr.split('-').map(Number);
+            return new Date(year, month - 1, day, 12, 0, 0, 0);
+        }
+
+        function formatDate(dateStr) {
+            const date = parseLocalDate(dateStr);
+            return date.toLocaleDateString('fr-FR', {
+                weekday: 'long',
+                year: 'numeric',
+                month: 'long',
+                day: 'numeric'
+            });
+        }
+
+        function formatDateTime(dateStr, timeStr) {
+            const [year, month, day] = dateStr.split('-').map(Number);
+            const [hours, minutes] = timeStr.split(':').map(Number);
+            
+            const date = new Date(year, month - 1, day, hours, minutes, 0);
+            
+            return date.toLocaleDateString('fr-FR', {
+                weekday: 'long',
+                year: 'numeric',
+                month: 'long',
+                day: 'numeric',
+                hour: '2-digit',
+                minute: '2-digit'
+            });
+        }
+
+        function formatDateToYMD(date) {
+            const year = date.getFullYear();
+            const month = String(date.getMonth() + 1).padStart(2, '0');
+            const day = String(date.getDate()).padStart(2, '0');
+            return `${year}-${month}-${day}`;
+        }
+
+        function showNotification(message, type = "success") {
+            const notification = document.getElementById('notification-admin');
+            notification.textContent = message;
+            notification.className = `notification-admin ${type}`;
+            notification.style.display = 'block';
+            
+            setTimeout(() => {
+                notification.style.display = 'none';
+            }, 4000);
+        }
+
+        function getServiceColor(serviceId) {
+            const colors = [
+                '#d17a9e', // Service 1
+                '#9c27b0', // Service 2
+                '#3f51b5', // Service 3
+                '#2196f3', // Service 4
+                '#00bcd4', // Service 5
+                '#009688', // Service 6
+                '#4caf50', // Service 7
+                '#ff9800', // Service 8
+                '#ff5722', // Service 9
+                '#795548', // Service 10
+                '#607d8b'  // Service 11
+            ];
+            return colors[(serviceId - 1) % colors.length];
+        }
+
+        // ============================================
+        // FONCTIONS DE MODIFICATION DE RENDEZ-VOUS
+        // ============================================
+
+        // Générer les créneaux horaires disponibles (9h-18h)
+        function generateTimeSlots() {
+            const slots = [];
+            for (let hour = 9; hour <= 18; hour++) {
+                for (let minute = 0; minute < 60; minute += 30) {
+                    if (hour === 18 && minute > 0) break; // Pas après 18h
+                    const timeStr = `${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}`;
+                    slots.push(timeStr);
+                }
+            }
+            return slots;
+        }
+
+        async function openEditModal(requestId) {
+            try {
+                selectedRequest = appointmentRequests[requestId];
+                if (!selectedRequest) {
+                    showNotification("Demande non trouvée", "error");
+                    return;
+                }
+                
+                const modal = document.getElementById('edit-modal');
+                const currentInfo = document.getElementById('edit-current-info');
+                const dateInput = document.getElementById('edit-date');
+                const timeSelect = document.getElementById('edit-time');
+                const notesInput = document.getElementById('edit-notes');
+                
+                // Afficher les informations actuelles
+                currentInfo.innerHTML = `
+                    <p><strong>Client :</strong> ${selectedRequest.client.name}</p>
+                    <p><strong>Actuellement :</strong> ${formatDate(selectedRequest.date)} à ${selectedRequest.time}</p>
+                    <p><strong>Service :</strong> ${selectedRequest.service.name}</p>
+                `;
+                
+                // Remplir la date (au minimum aujourd'hui)
+                const today = new Date();
+                const todayStr = today.toISOString().split('T')[0];
+                dateInput.min = todayStr;
+                dateInput.value = selectedRequest.date;
+                
+                // Remplir les créneaux horaires
+                timeSelect.innerHTML = '<option value="">Sélectionner une heure</option>';
+                const timeSlots = generateTimeSlots();
+                
+                timeSlots.forEach(slot => {
+                    const option = document.createElement('option');
+                    option.value = slot;
+                    option.textContent = slot;
+                    
+                    // Marquer le créneau actuel
+                    if (slot === selectedRequest.time) {
+                        option.selected = true;
+                        option.textContent += ' (actuel)';
+                    }
+                    
+                    timeSelect.appendChild(option);
+                });
+                
+                // Réinitialiser les notes
+                notesInput.value = '';
+                
+                modal.classList.add('active');
+                
+            } catch (error) {
+                console.error("Erreur lors de l'ouverture du modal:", error);
+                showNotification("Erreur lors de l'ouverture", "error");
+            }
+        }
+
+        async function updateAppointment(newDate, newTime, notes) {
+            try {
+                if (!selectedRequest) {
+                    throw new Error("Aucun rendez-vous sélectionné");
+                }
+                
+                const oldDate = selectedRequest.date;
+                const oldTime = selectedRequest.time;
+                const requestId = selectedRequest.id;
+                
+                // Vérifier si le nouveau créneau est disponible
+                const confirmedForDate = confirmedSlots[newDate] || [];
+                
+                // Si on change de date, vérifier la disponibilité sur la nouvelle date
+                if (newDate !== oldDate || newTime !== oldTime) {
+                    // Si le créneau est déjà pris (et ce n'est pas notre propre rendez-vous)
+                    if (confirmedForDate.includes(newTime)) {
+                        // Vérifier que ce n'est pas notre propre rendez-vous à la même heure
+                        const isSameAppointment = newDate === oldDate && newTime === oldTime;
+                        if (!isSameAppointment) {
+                            throw new Error("Ce créneau est déjà réservé");
+                        }
+                    }
+                }
+                
+                // Préparer les données de modification
+                const modificationData = {
+                    modificationHistory: selectedRequest.modificationHistory || [],
+                    modifiedAt: new Date().toISOString(),
+                    modifiedBy: 'admin'
+                };
+                
+                // Ajouter cette modification à l'historique
+                modificationData.modificationHistory.push({
+                    date: new Date().toISOString(),
+                    oldDate: oldDate,
+                    oldTime: oldTime,
+                    newDate: newDate,
+                    newTime: newTime,
+                    notes: notes,
+                    modifiedBy: 'admin'
+                });
+                
+                // Mettre à jour la demande
+                await database.ref(`appointmentRequests/${requestId}`).update({
+                    date: newDate,
+                    time: newTime,
+                    ...modificationData
+                });
+                
+                // Mettre à jour les créneaux confirmés
+                if (newDate !== oldDate) {
+                    // Supprimer l'ancien créneau de la date d'origine
+                    const oldDateSlots = confirmedSlots[oldDate] || [];
+                    const oldIndex = oldDateSlots.indexOf(oldTime);
+                    if (oldIndex > -1) {
+                        oldDateSlots.splice(oldIndex, 1);
+                        await database.ref(`confirmedSlots/${oldDate}`).set(oldDateSlots);
+                    }
+                    
+                    // Ajouter le nouveau créneau
+                    if (!confirmedForDate.includes(newTime)) {
+                        confirmedForDate.push(newTime);
+                        await database.ref(`confirmedSlots/${newDate}`).set(confirmedForDate);
+                    }
+                } else if (newTime !== oldTime) {
+                    // Même date, heure différente
+                    const slots = confirmedSlots[newDate] || [];
+                    const oldIndex = slots.indexOf(oldTime);
+                    if (oldIndex > -1) {
+                        slots.splice(oldIndex, 1);
+                    }
+                    if (!slots.includes(newTime)) {
+                        slots.push(newTime);
+                    }
+                    await database.ref(`confirmedSlots/${newDate}`).set(slots);
+                }
+                
+                // Envoyer un email de notification si l'email est configuré
+                await sendModificationEmail(selectedRequest, oldDate, oldTime, newDate, newTime, notes);
+                
+                return true;
+                
+            } catch (error) {
+                console.error("Erreur lors de la modification:", error);
+                throw error;
+            }
+        }
+
+        async function sendModificationEmail(request, oldDate, oldTime, newDate, newTime, notes) {
+            try {
+                // Vérifier si EmailJS est configuré pour les modifications
+                const EMAILJS_TEMPLATE_MODIFICATION = 'template_modification'; // À créer dans EmailJS
+                
+                const templateParams = {
+                    to_email: request.client.email,
+                    to_name: request.client.name,
+                    client_name: request.client.name,
+                    salon_name: "Salon de Beauté Cléopatra",
+                    old_appointment: formatDateTime(oldDate, oldTime),
+                    new_appointment: formatDateTime(newDate, newTime),
+                    service_name: request.service.name,
+                    modification_notes: notes || "Modification d'horaire",
+                    salon_phone: "+213 665 54 62 19",
+                    contact_message: "Pour toute question, n'hésitez pas à nous contacter."
+                };
+                
+                // Envoyer l'email si le template existe
+                try {
+                    await emailjs.send(
+                        EMAILJS_SERVICE_ID,
+                        EMAILJS_TEMPLATE_MODIFICATION,
+                        templateParams
+                    );
+                } catch (emailError) {
+                    console.warn("Email de modification non envoyé:", emailError);
+                    // Ne pas bloquer l'opération si l'email échoue
+                }
+                
+                return true;
+            } catch (error) {
+                console.error("Erreur d'envoi d'email:", error);
+                // Ne pas lever d'erreur pour ne pas bloquer la modification
+                return false;
+            }
+        }
+
+        // ============================================
+        // FONCTIONS FIREBASE
+        // ============================================
+        async function loadAllData() {
+            try {
+                // Charger les demandes
+                const requestsSnapshot = await database.ref('appointmentRequests').once('value');
+                appointmentRequests = requestsSnapshot.val() || {};
+                
+                // Charger les créneaux confirmés
+                const slotsSnapshot = await database.ref('confirmedSlots').once('value');
+                confirmedSlots = slotsSnapshot.val() || {};
+                
+                console.log("Données chargées:", {
+                    requests: Object.keys(appointmentRequests).length,
+                    confirmedSlots: confirmedSlots
+                });
+                
+                return { appointmentRequests, confirmedSlots };
+            } catch (error) {
+                console.error("Erreur de chargement:", error);
+                throw error;
+            }
+        }
+
+        async function confirmRequest(requestId) {
+            try {
+                const request = appointmentRequests[requestId];
+                if (!request) throw new Error("Demande non trouvée");
+                
+                const dateStr = request.date;
+                const timeSlot = request.time;
+                
+                // 1. Mettre à jour le statut de la demande
+                await database.ref(`appointmentRequests/${requestId}`).update({
+                    status: 'confirmed',
+                    confirmedAt: new Date().toISOString(),
+                    confirmedBy: 'admin'
+                });
+                
+                // 2. Ajouter au planning confirmé
+                const confirmedForDate = confirmedSlots[dateStr] || [];
+                if (!confirmedForDate.includes(timeSlot)) {
+                    confirmedForDate.push(timeSlot);
+                    await database.ref(`confirmedSlots/${dateStr}`).set(confirmedForDate);
+                }
+                
+                // 3. Envoyer email de confirmation
+                await sendConfirmationEmail(request);
+                
+                return true;
+            } catch (error) {
+                console.error("Erreur de confirmation:", error);
+                throw error;
+            }
+        }
+
+        async function rejectRequest(requestId, reason) {
+            try {
+                await database.ref(`appointmentRequests/${requestId}`).update({
+                    status: 'rejected',
+                    rejectedAt: new Date().toISOString(),
+                    rejectionReason: reason
+                });
+                
+                // Envoyer email de refus
+                const request = appointmentRequests[requestId];
+                await sendRejectionEmail(request, reason);
+                
+                return true;
+            } catch (error) {
+                console.error("Erreur de rejet:", error);
+                throw error;
+            }
+        }
+
+        // ============================================
+        // FONCTIONS EMAIL
+        // ============================================
+        async function sendConfirmationEmail(request) {
+            try {
+                const templateParams = {
+                    to_email: request.client.email,
+                    to_name: request.client.name,
+                    client_name: request.client.name,
+                    salon_name: "Salon de Beauté Cléopatra",
+                    appointment_date: formatDate(request.date),
+                    appointment_time: request.time,
+                    service_name: request.service.name,
+                    salon_address: "Rue des frères BETOUCHE, en face la recette des impôt, Ouadhias 15016",
+                    salon_phone: "+213 665 54 62 19",
+                    confirmed_date: new Date().toLocaleDateString('fr-FR'),
+                    important_notes: "Merci d'arriver 5 minutes avant votre rendez-vous."
+                };
+
+                await emailjs.send(
+                    EMAILJS_SERVICE_ID,
+                    EMAILJS_TEMPLATE_CLIENT_CONFIRMED,
+                    templateParams
+                );
+                
+                return true;
+            } catch (error) {
+                console.error('Erreur EmailJS:', error);
+                throw error;
+            }
+        }
+
+        async function sendRejectionEmail(request, reason) {
+            try {
+                const templateParams = {
+                    to_email: request.client.email,
+                    to_name: request.client.name,
+                    client_name: request.client.name,
+                    salon_name: "Salon de Beauté Cléopatra",
+                    requested_date: formatDate(request.date),
+                    requested_time: request.time,
+                    service_name: request.service.name,
+                    rejection_reason: reason,
+                    salon_phone: "+213 665 54 62 19",
+                    contact_message: "Vous pouvez nous appeler pour choisir un autre créneau."
+                };
+
+                await emailjs.send(
+                    EMAILJS_SERVICE_ID,
+                    EMAILJS_TEMPLATE_CLIENT_REJECTED,
+                    templateParams
+                );
+                
+                return true;
+            } catch (error) {
+                console.error('Erreur EmailJS:', error);
+                throw error;
+            }
+        }
+
+        // ============================================
+        // FONCTIONS D'AFFICHAGE
+        // ============================================
+        function renderRequests() {
+            renderPendingRequests();
+            renderConfirmedRequests();
+            renderCalendarView();
+            updateStats();
+        }
+
+        function renderPendingRequests() {
+            const container = document.getElementById('pending-list');
+            container.innerHTML = '';
+            
+            const pendingRequests = Object.keys(appointmentRequests)
+                .filter(id => appointmentRequests[id].status === 'pending')
+                .map(id => ({ id, ...appointmentRequests[id] }));
+            
+            if (pendingRequests.length === 0) {
+                container.innerHTML = `
+                    <div class="empty-state">
+                        <i class="fas fa-check-circle"></i>
+                        <h3>Aucune demande en attente</h3>
+                        <p>Toutes les demandes ont été traitées</p>
+                    </div>
+                `;
+                return;
+            }
+            
+            // Trier par date et heure (LOCAL)
+            pendingRequests.sort((a, b) => {
+                const dateA = parseLocalDate(a.date);
+                const dateB = parseLocalDate(b.date);
+                
+                if (dateA.getTime() !== dateB.getTime()) {
+                    return dateA - dateB;
+                }
+                
+                // Si même date, trier par heure
+                const timeA = a.time.split(':').map(Number);
+                const timeB = b.time.split(':').map(Number);
+                
+                if (timeA[0] !== timeB[0]) return timeA[0] - timeB[0];
+                return timeA[1] - timeB[1];
+            });
+            
+            pendingRequests.forEach(request => {
+                const card = document.createElement('div');
+                card.className = 'request-card';
+                
+                // Debug info
+                const debugInfo = request.debug ? 
+                    `<div style="font-size: 0.7rem; color: #888; margin-top: 5px;">
+                        <small>Date originale: ${request.debug.selectedDateLocal || 'N/A'}</small>
+                    </div>` : '';
+                
+                card.innerHTML = `
+                    <div class="request-header">
+                        <div class="request-info">
+                            <h4>${request.service.name}</h4>
+                            <div class="request-date">
+                                <i class="far fa-calendar"></i>
+                                ${formatDate(request.date)} à ${request.time}
+                            </div>
+                            ${debugInfo}
+                        </div>
+                        <div class="request-status status-pending">
+                            En attente
+                        </div>
+                    </div>
+                    
+                    <div class="request-details">
+                        <div class="detail-item">
+                            <span class="detail-label">Client</span>
+                            <span class="detail-value">${request.client.name}</span>
+                        </div>
+                        <div class="detail-item">
+                            <span class="detail-label">Téléphone</span>
+                            <span class="detail-value">${request.client.phone}</span>
+                        </div>
+                        <div class="detail-item">
+                            <span class="detail-label">Email</span>
+                            <span class="detail-value">${request.client.email}</span>
+                        </div>
+                        <div class="detail-item">
+                            <span class="detail-label">Durée</span>
+                            <span class="detail-value">${request.service.duration}</span>
+                        </div>
+                        <div class="detail-item">
+                            <span class="detail-label">Prix</span>
+                            <span class="detail-value">${request.service.price ? request.service.price + ' DA' : 'Sur devis'}</span>
+                        </div>
+                    </div>
+                    
+                    ${request.client.notes ? `
+                        <div style="padding: 10px; background: #fff; border-radius: 5px; margin: 10px 0;">
+                            <strong>Notes :</strong> ${request.client.notes}
+                        </div>
+                    ` : ''}
+                    
+                    <div class="request-actions">
+                        <button class="action-btn confirm" data-id="${request.id}">
+                            <i class="fas fa-check"></i> Confirmer
+                        </button>
+                        <button class="action-btn reject" data-id="${request.id}">
+                            <i class="fas fa-times"></i> Refuser
+                        </button>
+                        <button class="action-btn call" onclick="window.open('tel:${request.client.phone}')">
+                            <i class="fas fa-phone"></i> Appeler
+                        </button>
+                    </div>
+                `;
+                
+                container.appendChild(card);
+            });
+            
+            // Ajouter les événements
+            container.querySelectorAll('.action-btn.confirm').forEach(btn => {
+                btn.addEventListener('click', (e) => {
+                    const id = e.target.closest('button').dataset.id;
+                    openConfirmModal(id);
+                });
+            });
+            
+            container.querySelectorAll('.action-btn.reject').forEach(btn => {
+                btn.addEventListener('click', (e) => {
+                    const id = e.target.closest('button').dataset.id;
+                    openRejectModal(id);
+                });
+            });
+        }
+
+        function renderConfirmedRequests() {
+            const container = document.getElementById('confirmed-list');
+            container.innerHTML = '';
+            
+            const confirmedRequests = Object.keys(appointmentRequests)
+                .filter(id => appointmentRequests[id].status === 'confirmed')
+                .map(id => ({ id, ...appointmentRequests[id] }));
+            
+            if (confirmedRequests.length === 0) {
+                container.innerHTML = `
+                    <div class="empty-state">
+                        <i class="fas fa-calendar-check"></i>
+                        <h3>Aucun rendez-vous confirmé</h3>
+                    </div>
+                `;
+                return;
+            }
+            
+            confirmedRequests.sort((a, b) => {
+                const dateA = parseLocalDate(a.date);
+                const dateB = parseLocalDate(b.date);
+                return dateA - dateB;
+            });
+            
+            confirmedRequests.forEach(request => {
+                const card = document.createElement('div');
+                card.className = 'request-card confirmed';
+                
+                // Afficher l'historique de modification si existant
+                const modificationHistory = request.modificationHistory ? `
+                    <div style="margin-top: 10px; padding: 10px; background: #fff8e1; border-radius: 5px; font-size: 0.9rem;">
+                        <strong><i class="fas fa-history"></i> Historique :</strong>
+                        <ul style="margin: 5px 0 0 20px; color: #666;">
+                            ${request.modificationHistory.map(mod => 
+                                `<li>Modifié le ${new Date(mod.date).toLocaleDateString('fr-FR')} : ${mod.oldTime} → ${mod.newTime}</li>`
+                            ).join('')}
+                        </ul>
+                    </div>
+                ` : '';
+                
+                card.innerHTML = `
+                    <div class="request-header">
+                        <div class="request-info">
+                            <h4>${request.service.name}</h4>
+                            <div class="request-date">
+                                <i class="far fa-calendar"></i>
+                                ${formatDate(request.date)} à ${request.time}
+                                ${request.modifiedAt ? 
+                                    `<span style="color: #f57c00; font-size: 0.8rem; margin-left: 10px;">
+                                        <i class="fas fa-edit"></i> Modifié
+                                    </span>` : ''
+                                }
+                            </div>
+                        </div>
+                        <div class="request-status status-confirmed">
+                            Confirmé
+                        </div>
+                    </div>
+                    
+                    <div class="request-details">
+                        <div class="detail-item">
+                            <span class="detail-label">Client</span>
+                            <span class="detail-value">${request.client.name}</span>
+                        </div>
+                        <div class="detail-item">
+                            <span class="detail-label">Téléphone</span>
+                            <span class="detail-value">${request.client.phone}</span>
+                        </div>
+                        <div class="detail-item">
+                            <span class="detail-label">Email</span>
+                            <span class="detail-value">${request.client.email}</span>
+                        </div>
+                        <div class="detail-item">
+                            <span class="detail-label">Confirmé le</span>
+                            <span class="detail-value">${request.confirmedAt ? new Date(request.confirmedAt).toLocaleDateString('fr-FR') : '-'}</span>
+                        </div>
+                    </div>
+                    
+                    ${modificationHistory}
+                    
+                    <div class="request-actions">
+                        <button class="action-btn edit" data-id="${request.id}">
+                            <i class="fas fa-edit"></i> Modifier
+                        </button>
+                        <button class="action-btn call" onclick="window.open('tel:${request.client.phone}')">
+                            <i class="fas fa-phone"></i> Appeler
+                        </button>
+                    </div>
+                `;
+                
+                container.appendChild(card);
+            });
+            
+            // Attacher les événements pour les boutons Modifier
+            attachEditEvents();
+        }
+
+        function renderCalendarView() {
+            const container = document.getElementById('calendar-view');
+            container.innerHTML = '';
+            
+            // Regrouper les rendez-vous confirmés par date
+            const byDate = {};
+            Object.keys(appointmentRequests).forEach(id => {
+                const request = appointmentRequests[id];
+                if (request.status === 'confirmed') {
+                    if (!byDate[request.date]) {
+                        byDate[request.date] = [];
+                    }
+                    byDate[request.date].push(request);
+                }
+            });
+            
+            // Créer la grille de jours
+            const grid = document.createElement('div');
+            grid.className = 'calendar-grid';
+            
+            const today = new Date();
+            const todayStr = formatDateToYMD(today);
+            
+            for (let i = 0; i < calendarDaysToShow; i++) {
+                const date = new Date(calendarStartDate);
+                date.setDate(calendarStartDate.getDate() + i);
+                
+                const dateStr = formatDateToYMD(date);
+                const dayCard = document.createElement('div');
+                
+                // Déterminer les classes CSS
+                let dayClass = 'day-card';
+                if (dateStr === todayStr) {
+                    dayClass += ' today';
+                } else if (i === 1 && dateStr === formatDateToYMD(new Date(today.getTime() + 24 * 60 * 60 * 1000))) {
+                    dayClass += ' tomorrow';
+                }
+                
+                dayCard.className = dayClass;
+                
+                // Formater la date pour l'affichage
+                const dayName = date.toLocaleDateString('fr-FR', { weekday: 'long' });
+                const dayNumber = date.getDate();
+                const monthName = date.toLocaleDateString('fr-FR', { month: 'long' });
+                const year = date.getFullYear();
+                
+                // Indicateur du jour
+                let dayIndicator = '';
+                if (dateStr === todayStr) {
+                    dayIndicator = '<span class="day-indicator">Aujourd\'hui</span>';
+                } else if (i === 1) {
+                    const tomorrow = new Date(today);
+                    tomorrow.setDate(today.getDate() + 1);
+                    if (dateStr === formatDateToYMD(tomorrow)) {
+                        dayIndicator = '<span class="day-indicator tomorrow">Demain</span>';
+                    }
+                }
+                
+                // Récupérer les rendez-vous pour cette date
+                const appointmentsForDay = byDate[dateStr] || [];
+                
+                // Trier les rendez-vous par heure
+                appointmentsForDay.sort((a, b) => {
+                    const timeA = a.time.split(':').map(Number);
+                    const timeB = b.time.split(':').map(Number);
+                    if (timeA[0] !== timeB[0]) return timeA[0] - timeB[0];
+                    return timeA[1] - timeB[1];
+                });
+                
+                // Calculer les statistiques
+                const totalRevenue = appointmentsForDay.reduce((sum, app) => {
+                    return sum + (app.service.price || 0);
+                }, 0);
+                
+                // Générer le HTML
+                dayCard.innerHTML = `
+                    <div class="day-header">
+                        <div>
+                            <i class="far fa-calendar"></i>
+                            ${dayName} ${dayNumber} ${monthName} ${year}
+                            ${dayIndicator}
+                        </div>
+                        <span style="font-size: 0.9rem; color: #666;">
+                            ${appointmentsForDay.length} RDV
+                        </span>
+                    </div>
+                    
+                    <div class="day-stats">
+                        <div><i class="fas fa-users"></i> ${appointmentsForDay.length}</div>
+                        <div><i class="fas fa-money-bill-wave"></i> ${totalRevenue} DA</div>
+                    </div>
+                    
+                    ${appointmentsForDay.length === 0 ? 
+                        '<div class="empty-day">Aucun rendez-vous</div>' : 
+                        appointmentsForDay.map(app => {
+                            // Trouver le service pour la couleur
+                            const serviceObj = services.find(s => s.name === app.service.name);
+                            const serviceColor = serviceObj ? getServiceColor(serviceObj.id) : '#d17a9e';
+                            
+                            return `
+                                <div class="time-slot-admin booked" style="border-left-color: ${serviceColor}">
+                                    <div class="client-info">
+                                        <div style="display: flex; justify-content: space-between;">
+                                            <strong>${app.time}</strong>
+                                            <span style="font-size: 0.8rem; color: #666;">
+                                                ${app.service.price ? app.service.price + ' DA' : 'Sur devis'}
+                                            </span>
+                                        </div>
+                                        <div style="font-size: 0.85rem; font-weight: 500; margin: 5px 0;">
+                                            ${app.client.name}
+                                        </div>
+                                        <div style="font-size: 0.75rem; color: #666;">
+                                            <i class="fas fa-phone"></i> ${app.client.phone}
+                                        </div>
+                                    </div>
+                                    <div class="service-info">
+                                        <div style="font-size: 0.8rem; font-weight: 500; color: #666;">
+                                            ${app.service.name}
+                                        </div>
+                                        <div style="font-size: 0.75rem; color: #888; margin-top: 3px;">
+                                            ${app.service.duration || '1h'}
+                                        </div>
+                                    </div>
+                                </div>
+                            `;
+                        }).join('')
+                    }
+                `;
+                
+                grid.appendChild(dayCard);
+            }
+            
+            container.appendChild(grid);
+        }
+
+        function updateStats() {
+            const pending = Object.keys(appointmentRequests)
+                .filter(id => appointmentRequests[id].status === 'pending').length;
+            
+            const confirmed = Object.keys(appointmentRequests)
+                .filter(id => appointmentRequests[id].status === 'confirmed').length;
+            
+            // Date d'aujourd'hui au format YYYY-MM-DD
+            const today = new Date();
+            const todayStr = formatDateToYMD(today);
+            
+            const todayCount = Object.keys(appointmentRequests)
+                .filter(id => appointmentRequests[id].status === 'confirmed' && 
+                              appointmentRequests[id].date === todayStr).length;
+            
+            const currentMonth = new Date().getMonth() + 1;
+            const monthRevenue = Object.keys(appointmentRequests)
+                .filter(id => {
+                    const request = appointmentRequests[id];
+                    if (request.status !== 'confirmed') return false;
+                    
+                    const requestDate = parseLocalDate(request.date);
+                    return requestDate.getMonth() + 1 === currentMonth && request.service.price;
+                })
+                .reduce((sum, id) => {
+                    const price = appointmentRequests[id].service.price || 0;
+                    return sum + price;
+                }, 0);
+            
+            document.getElementById('pending-count').textContent = pending;
+            document.getElementById('confirmed-count').textContent = confirmed;
+            document.getElementById('today-count').textContent = todayCount;
+            document.getElementById('revenue-total').textContent = monthRevenue + ' DA';
+        }
+
+        // ============================================
+        // GESTION DES MODALS
+        // ============================================
+        function openConfirmModal(requestId) {
+            selectedRequest = appointmentRequests[requestId];
+            const modal = document.getElementById('confirm-modal');
+            const details = document.getElementById('confirm-details');
+            
+            details.innerHTML = `
+                <p>Confirmer ce rendez-vous :</p>
+                <div style="background: #f9f0f5; padding: 15px; border-radius: 8px; margin: 15px 0;">
+                    <p><strong>Client :</strong> ${selectedRequest.client.name}</p>
+                    <p><strong>Date :</strong> ${formatDate(selectedRequest.date)}</p>
+                    <p><strong>Heure :</strong> ${selectedRequest.time}</p>
+                    <p><strong>Service :</strong> ${selectedRequest.service.name}</p>
+                    <p><strong>Téléphone :</strong> ${selectedRequest.client.phone}</p>
+                </div>
+                <p>Un email de confirmation sera envoyé au client.</p>
+            `;
+            
+            modal.classList.add('active');
+        }
+
+        function openRejectModal(requestId) {
+            selectedRequest = appointmentRequests[requestId];
+            const modal = document.getElementById('reject-modal');
+            document.getElementById('reject-reason').value = '';
+            modal.classList.add('active');
+        }
+
+        // ============================================
+        // FONCTIONS DE NAVIGATION CALENDRIER
+        // ============================================
+        function navigateCalendar(days) {
+            calendarStartDate.setDate(calendarStartDate.getDate() + days);
+            renderCalendarView();
+        }
+
+        function goToToday() {
+            calendarStartDate = new Date();
+            renderCalendarView();
+        }
+
+        // ============================================
+        // ÉVÉNEMENTS
+        // ============================================
+        
+        // Attacher les événements pour les boutons Modifier
+        function attachEditEvents() {
+            document.querySelectorAll('.action-btn.edit').forEach(btn => {
+                btn.addEventListener('click', (e) => {
+                    const id = e.target.closest('button').dataset.id;
+                    openEditModal(id);
+                });
+            });
+        }
+
+        document.addEventListener('DOMContentLoaded', function() {
+            // Date du jour
+            const today = new Date();
+            document.getElementById('today-date').textContent = today.toLocaleDateString('fr-FR', {
+                weekday: 'long',
+                year: 'numeric',
+                month: 'long',
+                day: 'numeric'
+            });
+            
+            // Remplir le filtre des services
+            const serviceFilter = document.getElementById('filter-service');
+            services.forEach(service => {
+                const option = document.createElement('option');
+                option.value = service.id;
+                option.textContent = service.name;
+                serviceFilter.appendChild(option);
+            });
+            
+            // Connexion
+            document.getElementById('login-btn').addEventListener('click', async function() {
+                const password = document.getElementById('admin-password').value;
+                const loginText = document.getElementById('login-text');
+                const loginSpinner = document.getElementById('login-spinner');
+                
+                if (password === ADMIN_PASSWORD) {
+                    loginText.style.display = 'none';
+                    loginSpinner.style.display = 'inline-block';
+                    
+                    setTimeout(async () => {
+                        document.getElementById('login-page').style.display = 'none';
+                        document.getElementById('admin-interface').style.display = 'block';
+                        
+                        await loadAllData();
+                        renderRequests();
+                        
+                        // Écouter les changements en temps réel
+                        database.ref('appointmentRequests').on('value', (snapshot) => {
+                            appointmentRequests = snapshot.val() || {};
+                            renderRequests();
+                        });
+                        
+                        database.ref('confirmedSlots').on('value', (snapshot) => {
+                            confirmedSlots = snapshot.val() || {};
+                        });
+                        
+                        loginText.style.display = 'inline';
+                        loginSpinner.style.display = 'none';
+                        
+                        showNotification("Connexion réussie", "success");
+                    }, 1000);
+                } else {
+                    showNotification("Mot de passe incorrect", "error");
+                }
+            });
+            
+            // Déconnexion
+            document.getElementById('logout-btn').addEventListener('click', function() {
+                document.getElementById('login-page').style.display = 'block';
+                document.getElementById('admin-interface').style.display = 'none';
+                document.getElementById('admin-password').value = '';
+            });
+            
+            // Actualiser
+            document.getElementById('refresh-btn').addEventListener('click', async function() {
+                await loadAllData();
+                renderRequests();
+                showNotification("Données actualisées", "success");
+            });
+            
+            // Onglets
+            document.querySelectorAll('.tab').forEach(tab => {
+                tab.addEventListener('click', function() {
+                    document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+                    document.querySelectorAll('.tab-pane').forEach(p => p.classList.remove('active'));
+                    
+                    this.classList.add('active');
+                    const tabId = this.dataset.tab;
+                    document.getElementById(`${tabId}-tab`).classList.add('active');
+                });
+            });
+            
+            // Modals: Confirmation
+            document.getElementById('cancel-confirm').addEventListener('click', function() {
+                document.getElementById('confirm-modal').classList.remove('active');
+            });
+            
+            document.getElementById('submit-confirm').addEventListener('click', async function() {
+                if (!selectedRequest) return;
+                
+                const btn = this;
+                const originalText = btn.innerHTML;
+                btn.innerHTML = '<span class="loading-spinner"></span> Traitement...';
+                btn.disabled = true;
+                
+                try {
+                    await confirmRequest(selectedRequest.id);
+                    
+                    showNotification("Rendez-vous confirmé ! Email envoyé.", "success");
+                    document.getElementById('confirm-modal').classList.remove('active');
+                    selectedRequest = null;
+                } catch (error) {
+                    showNotification("Erreur lors de la confirmation", "error");
+                } finally {
+                    btn.innerHTML = originalText;
+                    btn.disabled = false;
+                }
+            });
+            
+            // Modals: Rejet
+            document.getElementById('cancel-reject').addEventListener('click', function() {
+                document.getElementById('reject-modal').classList.remove('active');
+                document.getElementById('reject-reason').value = '';
+            });
+            
+            document.getElementById('submit-reject').addEventListener('click', async function() {
+                if (!selectedRequest) return;
+                
+                const reason = document.getElementById('reject-reason').value;
+                if (!reason.trim()) {
+                    showNotification("Veuillez indiquer une raison", "error");
+                    return;
+                }
+                
+                const btn = this;
+                const originalText = btn.innerHTML;
+                btn.innerHTML = '<span class="loading-spinner"></span> Traitement...';
+                btn.disabled = true;
+                
+                try {
+                    await rejectRequest(selectedRequest.id, reason);
+                    
+                    showNotification("Demande refusée ! Email envoyé.", "success");
+                    document.getElementById('reject-modal').classList.remove('active');
+                    document.getElementById('reject-reason').value = '';
+                    selectedRequest = null;
+                } catch (error) {
+                    showNotification("Erreur lors du refus", "error");
+                } finally {
+                    btn.innerHTML = originalText;
+                    btn.disabled = false;
+                }
+            });
+            
+            // Modals: Modification
+            document.getElementById('cancel-edit').addEventListener('click', function() {
+                document.getElementById('edit-modal').classList.remove('active');
+                document.getElementById('edit-notes').value = '';
+            });
+            
+            document.getElementById('submit-edit').addEventListener('click', async function() {
+                const newDate = document.getElementById('edit-date').value;
+                const newTime = document.getElementById('edit-time').value;
+                const notes = document.getElementById('edit-notes').value;
+                
+                if (!newDate || !newTime) {
+                    showNotification("Veuillez sélectionner une date et une heure", "error");
+                    return;
+                }
+                
+                const btn = this;
+                const originalText = btn.innerHTML;
+                btn.innerHTML = '<span class="loading-spinner"></span> Modification en cours...';
+                btn.disabled = true;
+                
+                try {
+                    await updateAppointment(newDate, newTime, notes);
+                    
+                    showNotification("Rendez-vous modifié avec succès !", "success");
+                    document.getElementById('edit-modal').classList.remove('active');
+                    document.getElementById('edit-notes').value = '';
+                    
+                    // Recharger les données
+                    await loadAllData();
+                    renderRequests();
+                    
+                } catch (error) {
+                    console.error("Erreur:", error);
+                    showNotification(error.message || "Erreur lors de la modification", "error");
+                } finally {
+                    btn.innerHTML = originalText;
+                    btn.disabled = false;
+                }
+            });
+            
+            // Navigation calendrier
+            document.getElementById('prev-days').addEventListener('click', function() {
+                navigateCalendar(-calendarDaysToShow);
+            });
+            
+            document.getElementById('next-days').addEventListener('click', function() {
+                navigateCalendar(calendarDaysToShow);
+            });
+            
+            document.getElementById('today-btn').addEventListener('click', function() {
+                goToToday();
+            });
+            
+            // Fermer les modals
+            document.querySelectorAll('.modal-overlay').forEach(modal => {
+                modal.addEventListener('click', function(e) {
+                    if (e.target === this) {
+                        this.classList.remove('active');
+                    }
+                });
+            });
+            
+            // Connexion avec Entrée
+            document.getElementById('admin-password').addEventListener('keypress', function(e) {
+                if (e.key === 'Enter') {
+                    document.getElementById('login-btn').click();
+                }
+            });
+        });
+    </script>
+</body>
+</html>
