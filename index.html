@@ -234,6 +234,12 @@
             opacity: 0.7;
         }
 
+        .request-card.cancelled {
+            border-left-color: #999;
+            opacity: 0.6;
+            background-color: #f9f9f9;
+        }
+
         .request-header {
             display: flex;
             justify-content: space-between;
@@ -276,6 +282,11 @@
             color: #721c24;
         }
 
+        .status-cancelled {
+            background-color: #e9ecef;
+            color: #495057;
+        }
+
         .request-details {
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
@@ -305,6 +316,7 @@
             display: flex;
             gap: 10px;
             justify-content: flex-end;
+            flex-wrap: wrap;
         }
 
         .action-btn {
@@ -334,6 +346,15 @@
         }
 
         .action-btn.reject:hover {
+            background-color: #ffcdd2;
+        }
+
+        .action-btn.cancel {
+            background-color: #ffebee;
+            color: #d32f2f;
+        }
+
+        .action-btn.cancel:hover {
             background-color: #ffcdd2;
         }
 
@@ -925,6 +946,41 @@
         </div>
     </div>
 
+    <!-- Modal pour annuler un rendez-vous -->
+    <div class="modal-overlay" id="cancel-modal">
+        <div class="modal">
+            <h3><i class="fas fa-calendar-times"></i> Annuler le rendez-vous</h3>
+            
+            <div id="cancel-current-info" style="background: #fff5f5; padding: 15px; border-radius: 8px; margin-bottom: 20px;"></div>
+            
+            <div class="form-group">
+                <label for="cancel-reason">Raison de l'annulation :</label>
+                <select id="cancel-reason" class="filter-select" required>
+                    <option value="">Sélectionner une raison</option>
+                    <option value="client_demande">Demande du client</option>
+                    <option value="salon_indisponible">Indisponibilité du salon</option>
+                    <option value="problème_technique">Problème technique</option>
+                    <option value="urgence">Urgence/force majeure</option>
+                    <option value="autre">Autre</option>
+                </select>
+            </div>
+            
+            <div class="form-group">
+                <label for="cancel-details">Détails (optionnel) :</label>
+                <textarea id="cancel-details" rows="3" placeholder="Précisez les détails de l'annulation..."></textarea>
+            </div>
+            
+            <div class="modal-actions">
+                <button class="btn btn-secondary" id="cancel-cancel">
+                    <i class="fas fa-times"></i> Retour
+                </button>
+                <button class="btn btn-danger" id="submit-cancel">
+                    <i class="fas fa-calendar-times"></i> Confirmer l'annulation
+                </button>
+            </div>
+        </div>
+    </div>
+
     <!-- Notification -->
     <div id="notification-admin" class="notification-admin"></div>
 
@@ -947,6 +1003,7 @@
         const EMAILJS_SERVICE_ID = 'service_1fufyah';
         const EMAILJS_TEMPLATE_CLIENT_CONFIRMED = 'template_msuzz8g'; // Email de confirmation client
         const EMAILJS_TEMPLATE_CLIENT_REJECTED = 'template_te9yk6x'; // Email de refus client
+        const EMAILJS_TEMPLATE_CLIENT_CANCELLED = 'template_cancellation'; // Email d'annulation client
 
         // MOT DE PASSE ADMIN (À CHANGER !)
         const ADMIN_PASSWORD = "salon123";
@@ -1253,6 +1310,127 @@
             } catch (error) {
                 console.error("Erreur d'envoi d'email:", error);
                 // Ne pas lever d'erreur pour ne pas bloquer la modification
+                return false;
+            }
+        }
+
+        // ============================================
+        // FONCTIONS D'ANNULATION
+        // ============================================
+
+        async function openCancelModal(requestId) {
+            try {
+                selectedRequest = appointmentRequests[requestId];
+                if (!selectedRequest) {
+                    showNotification("Rendez-vous non trouvé", "error");
+                    return;
+                }
+                
+                const modal = document.getElementById('cancel-modal');
+                const currentInfo = document.getElementById('cancel-current-info');
+                
+                // Afficher les informations actuelles
+                currentInfo.innerHTML = `
+                    <p><strong>Client :</strong> ${selectedRequest.client.name}</p>
+                    <p><strong>Date :</strong> ${formatDate(selectedRequest.date)} à ${selectedRequest.time}</p>
+                    <p><strong>Service :</strong> ${selectedRequest.service.name}</p>
+                    <p><strong>Téléphone :</strong> ${selectedRequest.client.phone}</p>
+                    <p style="color: #d32f2f; margin-top: 10px;">
+                        <i class="fas fa-exclamation-triangle"></i> 
+                        Un email sera envoyé au client pour l'informer de l'annulation.
+                    </p>
+                `;
+                
+                // Réinitialiser les champs
+                document.getElementById('cancel-reason').value = '';
+                document.getElementById('cancel-details').value = '';
+                
+                modal.classList.add('active');
+                
+            } catch (error) {
+                console.error("Erreur lors de l'ouverture du modal:", error);
+                showNotification("Erreur lors de l'ouverture", "error");
+            }
+        }
+
+        async function cancelAppointment(reason, details) {
+            try {
+                if (!selectedRequest) {
+                    throw new Error("Aucun rendez-vous sélectionné");
+                }
+                
+                const requestId = selectedRequest.id;
+                const date = selectedRequest.date;
+                const time = selectedRequest.time;
+                
+                // Mettre à jour le statut de la demande
+                await database.ref(`appointmentRequests/${requestId}`).update({
+                    status: 'cancelled',
+                    cancelledAt: new Date().toISOString(),
+                    cancelledBy: 'admin',
+                    cancellationReason: reason,
+                    cancellationDetails: details
+                });
+                
+                // Supprimer le créneau des créneaux confirmés
+                const confirmedForDate = confirmedSlots[date] || [];
+                const timeIndex = confirmedForDate.indexOf(time);
+                
+                if (timeIndex > -1) {
+                    confirmedForDate.splice(timeIndex, 1);
+                    await database.ref(`confirmedSlots/${date}`).set(confirmedForDate);
+                }
+                
+                // Envoyer un email d'annulation
+                await sendCancellationEmail(selectedRequest, reason, details);
+                
+                return true;
+                
+            } catch (error) {
+                console.error("Erreur lors de l'annulation:", error);
+                throw error;
+            }
+        }
+
+        async function sendCancellationEmail(request, reason, details) {
+            try {
+                const reasonTexts = {
+                    'client_demande': 'Demande du client',
+                    'salon_indisponible': 'Indisponibilité du salon',
+                    'problème_technique': 'Problème technique',
+                    'urgence': 'Urgence/force majeure',
+                    'autre': 'Autre raison'
+                };
+                
+                const templateParams = {
+                    to_email: request.client.email,
+                    to_name: request.client.name,
+                    client_name: request.client.name,
+                    salon_name: "Salon de Beauté Cléopatra",
+                    appointment_date: formatDate(request.date),
+                    appointment_time: request.time,
+                    service_name: request.service.name,
+                    cancellation_reason: reasonTexts[reason] || reason,
+                    cancellation_details: details || 'Non spécifié',
+                    salon_phone: "+213 665 54 62 19",
+                    contact_message: "Pour replanifier votre rendez-vous, n'hésitez pas à nous contacter."
+                };
+                
+                // Envoyer l'email si le template existe
+                try {
+                    await emailjs.send(
+                        EMAILJS_SERVICE_ID,
+                        EMAILJS_TEMPLATE_CLIENT_CANCELLED,
+                        templateParams
+                    );
+                } catch (emailError) {
+                    console.warn("Email d'annulation non envoyé:", emailError);
+                    // Ne pas bloquer l'opération si l'email échoue
+                }
+                
+                return true;
+            } catch (error) {
+                console.error("Erreur d'envoi d'email:", error);
                 return false;
             }
         }
@@ -1609,6 +1787,9 @@
                         <button class="action-btn edit" data-id="${request.id}">
                             <i class="fas fa-edit"></i> Modifier
                         </button>
+                        <button class="action-btn cancel" data-id="${request.id}">
+                            <i class="fas fa-calendar-times"></i> Annuler
+                        </button>
                         <button class="action-btn call" onclick="window.open('tel:${request.client.phone}')">
                             <i class="fas fa-phone"></i> Appeler
                         </button>
@@ -1618,8 +1799,9 @@
                 container.appendChild(card);
             });
             
-            // Attacher les événements pour les boutons Modifier
+            // Attacher les événements pour les boutons Modifier et Annuler
             attachEditEvents();
+            attachCancelEvents();
         }
 
         function renderCalendarView() {
@@ -1761,18 +1943,20 @@
             const pending = Object.keys(appointmentRequests)
                 .filter(id => appointmentRequests[id].status === 'pending').length;
             
+            // Ne compter que les confirmés, pas les annulés
             const confirmed = Object.keys(appointmentRequests)
                 .filter(id => appointmentRequests[id].status === 'confirmed').length;
             
-            // Date d'aujourd'hui au format YYYY-MM-DD
             const today = new Date();
             const todayStr = formatDateToYMD(today);
             
+            // Ne compter que les confirmés d'aujourd'hui
             const todayCount = Object.keys(appointmentRequests)
                 .filter(id => appointmentRequests[id].status === 'confirmed' && 
                               appointmentRequests[id].date === todayStr).length;
             
             const currentMonth = new Date().getMonth() + 1;
+            // Ne compter que les revenus des rendez-vous confirmés (pas annulés)
             const monthRevenue = Object.keys(appointmentRequests)
                 .filter(id => {
                     const request = appointmentRequests[id];
@@ -1845,6 +2029,16 @@
                 btn.addEventListener('click', (e) => {
                     const id = e.target.closest('button').dataset.id;
                     openEditModal(id);
+                });
+            });
+        }
+
+        // Attacher les événements pour les boutons Annuler
+        function attachCancelEvents() {
+            document.querySelectorAll('.action-btn.cancel').forEach(btn => {
+                btn.addEventListener('click', (e) => {
+                    const id = e.target.closest('button').dataset.id;
+                    openCancelModal(id);
                 });
             });
         }
@@ -2028,6 +2222,49 @@
                 } catch (error) {
                     console.error("Erreur:", error);
                     showNotification(error.message || "Erreur lors de la modification", "error");
+                } finally {
+                    btn.innerHTML = originalText;
+                    btn.disabled = false;
+                }
+            });
+            
+            // Modals: Annulation
+            document.getElementById('cancel-cancel').addEventListener('click', function() {
+                document.getElementById('cancel-modal').classList.remove('active');
+                document.getElementById('cancel-reason').value = '';
+                document.getElementById('cancel-details').value = '';
+            });
+            
+            document.getElementById('submit-cancel').addEventListener('click', async function() {
+                const reason = document.getElementById('cancel-reason').value;
+                
+                if (!reason) {
+                    showNotification("Veuillez sélectionner une raison d'annulation", "error");
+                    return;
+                }
+                
+                const details = document.getElementById('cancel-details').value;
+                
+                const btn = this;
+                const originalText = btn.innerHTML;
+                btn.innerHTML = '<span class="loading-spinner"></span> Annulation en cours...';
+                btn.disabled = true;
+                
+                try {
+                    await cancelAppointment(reason, details);
+                    
+                    showNotification("Rendez-vous annulé avec succès ! Email envoyé au client.", "success");
+                    document.getElementById('cancel-modal').classList.remove('active');
+                    document.getElementById('cancel-reason').value = '';
+                    document.getElementById('cancel-details').value = '';
+                    
+                    // Recharger les données
+                    await loadAllData();
+                    renderRequests();
+                    
+                } catch (error) {
+                    console.error("Erreur:", error);
+                    showNotification(error.message || "Erreur lors de l'annulation", "error");
                 } finally {
                     btn.innerHTML = originalText;
                     btn.disabled = false;
